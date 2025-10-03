@@ -2,8 +2,12 @@
 
 extern crate alloc;
 
-use alloc::{string::String, vec::Vec};
-use core::{iter::Peekable, str::FromStr};
+use alloc::{fmt, string::String, vec::Vec};
+use core::{
+    fmt::{Display, Formatter},
+    iter::Peekable,
+    str::FromStr,
+};
 
 use itertools::{Itertools as _, PeekingNext};
 
@@ -312,6 +316,58 @@ impl FromStr for Json {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_chars(s.chars())
+    }
+}
+
+impl Display for Json {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            // Display a list
+            Json::List(values) => {
+                // Start displaying the list
+                write!(f, "[")?;
+
+                // Display the content of the list, if there is any
+                if !values.is_empty() {
+                    write!(f, "{}", values[0])?;
+                    for value in values.iter().skip(1) {
+                        write!(f, ",{value}")?;
+                    }
+                }
+
+                // Close the list
+                write!(f, "]")
+            }
+
+            // Display an object
+            Json::Object(items) => {
+                // Start displaying the object
+                write!(f, "{{")?;
+
+                // Display the properties of the object, if there are any
+                if !items.is_empty() {
+                    write!(f, "{:?}:{}", items[0].0, items[0].1)?;
+                    for item in items.iter().skip(1) {
+                        write!(f, ",{:?}:{}", item.0, item.1)?;
+                    }
+                }
+
+                // Close the object
+                write!(f, "}}")
+            }
+
+            // Display a string
+            Json::String(string) => write!(f, "{string:?}"),
+
+            // Display a number
+            Json::Number(number) => write!(f, "{number}"),
+
+            // Display a boolean
+            Json::Bool(value) => write!(f, "{value}"),
+
+            // Display the null value
+            Json::Null => write!(f, "null"),
+        }
     }
 }
 
