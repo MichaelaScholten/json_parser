@@ -1,4 +1,9 @@
-use std::{collections::HashMap, iter::Peekable, str::FromStr};
+#![no_std]
+
+extern crate alloc;
+
+use alloc::{string::String, vec::Vec};
+use core::{iter::Peekable, str::FromStr};
 
 use itertools::{Itertools as _, PeekingNext};
 
@@ -31,7 +36,7 @@ pub enum Json {
     List(Vec<Json>),
 
     /// An object
-    Object(HashMap<String, Json>),
+    Object(Vec<(String, Json)>),
 
     /// A string
     String(String),
@@ -232,14 +237,14 @@ impl Json {
     /// Tries to read an object
     fn read_object<I: Iterator<Item = char>>(
         mut iter: &mut Peekable<I>,
-    ) -> Result<HashMap<String, Self>, Error> {
+    ) -> Result<Vec<(String, Self)>, Error> {
         // Return an error if the object isn't an object
         if iter.next() != Some('{') {
             return Err(Error::InvalidValue);
         }
 
         // Read the object
-        let mut result = HashMap::new();
+        let mut result = Vec::new();
         loop {
             // Skip whitespace
             Self::skip_whitespace(&mut iter);
@@ -268,7 +273,7 @@ impl Json {
             let value = Self::parse_value(iter)?;
 
             // Insert the property with name and value
-            result.insert(name, value);
+            result.push((name, value));
 
             // Skip the whitespace
             Self::skip_whitespace(&mut iter);
@@ -336,7 +341,7 @@ impl<I: Iterator<Item = u8>> Iterator for Chars<I> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use alloc::{borrow::ToOwned, vec::Vec};
 
     use crate::Json;
 
@@ -379,7 +384,7 @@ mod tests {
                 .unwrap(),
             [
                 Json::Number(-654.321),
-                Json::Object(HashMap::new()),
+                Json::Object(Vec::new()),
                 Json::List(Vec::new()),
                 Json::String("Hello".to_owned()),
                 Json::Bool(false),
@@ -393,23 +398,23 @@ mod tests {
         assert!(Json::read_object(&mut "[]".chars().peekable()).is_err());
         assert_eq!(
             Json::read_object(&mut "{}".chars().peekable()).unwrap(),
-            HashMap::new()
+            Vec::new()
         );
         assert_eq!(
             Json::read_object(&mut "{\"number\":-123.456,\"object\":{}}".chars().peekable())
                 .unwrap(),
-            HashMap::from([
+            Vec::from([
                 ("number".to_owned(), Json::Number(-123.456)),
-                ("object".to_owned(), Json::Object(HashMap::new()))
+                ("object".to_owned(), Json::Object(Vec::new()))
             ])
         );
         assert_eq!(
             Json::read_object(
                 &mut "{\"number\":-123.456,\"object\":{},\"list\":[],\"string\": \"Hello\", \"bool\": true ,\"null\":null}".chars().peekable()
             ).unwrap(),
-            HashMap::from([
+            Vec::from([
                 ("number".to_owned(), Json::Number(-123.456)),
-                ("object".to_owned(), Json::Object(HashMap::new())),
+                ("object".to_owned(), Json::Object(Vec::new())),
                 ("list".to_owned(), Json::List(Vec::new())),
                 ("string".to_owned(), Json::String("Hello".to_owned())),
                 ("bool".to_owned(), Json::Bool(true)),
